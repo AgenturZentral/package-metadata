@@ -1,1 +1,11 @@
-dest
+de:
+    title: Theme Ultimate (Installer)
+    description: >
+        Installiert das Basispaket aus dem privaten Paketarchiv.
+        Erfordert vorab das Zugangspaket für den Archivzugriff.
+    homepage: https://www.theme-ultimate.de
+    keywords:
+        - Theme Ultimate
+        - Contao
+        - Installer
+        - License
