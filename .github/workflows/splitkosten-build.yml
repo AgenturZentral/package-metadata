@@ -1,73 +1,30 @@
-name: Build SplitKosten APK
+name: Export Android APK Signer
 
 on:
   push:
     branches:
       - build/splitkosten-20261004
-    paths:
-      - "splitkosten-android/**"
-      - ".github/workflows/splitkosten-build.yml"
-  pull_request:
-    branches:
-      - main
-    paths:
-      - "splitkosten-android/**"
-      - ".github/workflows/splitkosten-build.yml"
   workflow_dispatch:
 
 jobs:
-  build:
+  export:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
     env:
       ANDROID_HOME: /usr/local/lib/android/sdk
       ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Java 17
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: "17"
-
-      - name: Install Android 16 platform
+      - name: Install Android build tools
         run: |
           SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           yes | "$SDKMANAGER" --licenses >/dev/null || true
-          "$SDKMANAGER" "platform-tools" "platforms;android-36" "build-tools;36.0.0"
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: "8.13"
-
-      - name: Build APK
-        run: gradle -p splitkosten-android :app:assembleDebug --stacktrace
-
-      - name: Create persistent update key and sign
-        shell: bash
+          "$SDKMANAGER" "build-tools;36.0.0"
+      - name: Collect signer
         run: |
-          set -euo pipefail
-          UNSIGNED="splitkosten-android/app/build/outputs/apk/debug/app-debug.apk"
-          mkdir -p output
-          PASS="$(openssl rand -hex 18)"
-          KEY="output/SplitKosten-Update-Key.p12"
-          keytool -genkeypair -noprompt             -keystore "$KEY" -storetype PKCS12             -storepass "$PASS" -keypass "$PASS"             -alias splitkosten -keyalg RSA -keysize 2048 -validity 10000             -dname "CN=SplitKosten, OU=Private App, O=Agentur Zentral GmbH, C=DE"
-          printf "%s" "$PASS" > output/SplitKosten-Update-Key-Passwort.txt
-          "$ANDROID_HOME/build-tools/36.0.0/apksigner" sign             --ks "$KEY" --ks-key-alias splitkosten             --ks-pass "pass:$PASS" --key-pass "pass:$PASS"             --out output/SplitKosten-v1.0.0.apk "$UNSIGNED"
-
-      - name: Verify final APK
-        run: |
-          APK="output/SplitKosten-v1.0.0.apk"
-          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$APK"
-          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$APK" | head -30
-          sha256sum "$APK" > output/SHA256.txt
-
-      - name: Upload APK and update key
-        uses: actions/upload-artifact@v4
+          mkdir -p signer
+          cp "$ANDROID_HOME/build-tools/36.0.0/lib/apksigner.jar" signer/apksigner.jar
+      - uses: actions/upload-artifact@v4
         with:
-          name: SplitKosten-v1.0.0-final
-          path: output/*
-          if-no-files-found: error
-          retention-days: 7
+          name: android-apksigner-36
+          path: signer/apksigner.jar
+          retention-days: 1
