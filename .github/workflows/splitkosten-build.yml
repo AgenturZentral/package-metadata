@@ -45,19 +45,29 @@ jobs:
       - name: Build APK
         run: gradle -p splitkosten-android :app:assembleDebug --stacktrace
 
-      - name: Verify APK
+      - name: Create persistent update key and sign
+        shell: bash
         run: |
-          APK="splitkosten-android/app/build/outputs/apk/debug/app-debug.apk"
+          set -euo pipefail
+          UNSIGNED="splitkosten-android/app/build/outputs/apk/debug/app-debug.apk"
+          mkdir -p output
+          PASS="$(openssl rand -hex 18)"
+          KEY="output/SplitKosten-Update-Key.p12"
+          keytool -genkeypair -noprompt             -keystore "$KEY" -storetype PKCS12             -storepass "$PASS" -keypass "$PASS"             -alias splitkosten -keyalg RSA -keysize 2048 -validity 10000             -dname "CN=SplitKosten, OU=Private App, O=Agentur Zentral GmbH, C=DE"
+          printf "%s" "$PASS" > output/SplitKosten-Update-Key-Passwort.txt
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" sign             --ks "$KEY" --ks-key-alias splitkosten             --ks-pass "pass:$PASS" --key-pass "pass:$PASS"             --out output/SplitKosten-v1.0.0.apk "$UNSIGNED"
+
+      - name: Verify final APK
+        run: |
+          APK="output/SplitKosten-v1.0.0.apk"
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$APK"
           "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$APK" | head -30
-          mkdir -p output
-          cp "$APK" output/SplitKosten-v1.0.0.apk
-          sha256sum output/SplitKosten-v1.0.0.apk > output/SHA256.txt
+          sha256sum "$APK" > output/SHA256.txt
 
-      - name: Upload APK
+      - name: Upload APK and update key
         uses: actions/upload-artifact@v4
         with:
-          name: SplitKosten-v1.0.0
+          name: SplitKosten-v1.0.0-final
           path: output/*
           if-no-files-found: error
           retention-days: 7
