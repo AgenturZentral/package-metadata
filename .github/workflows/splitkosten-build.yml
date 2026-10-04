@@ -7,6 +7,12 @@ on:
     paths:
       - "splitkosten-android/**"
       - ".github/workflows/splitkosten-build.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "splitkosten-android/**"
+      - ".github/workflows/splitkosten-build.yml"
   workflow_dispatch:
 
 jobs:
