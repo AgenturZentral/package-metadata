@@ -1,4 +1,4 @@
-name: Export Android APK Signer
+name: Export Android 36 Toolchain
 
 on:
   push:
@@ -14,17 +14,19 @@ jobs:
       ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
     steps:
       - uses: actions/checkout@v4
-      - name: Install Android build tools
+      - name: Install Android 36 SDK components
         run: |
           SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           yes | "$SDKMANAGER" --licenses >/dev/null || true
-          "$SDKMANAGER" "build-tools;36.0.0"
-      - name: Collect signer
+          "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0"
+      - name: Package toolchain
         run: |
-          mkdir -p signer
-          cp "$ANDROID_HOME/build-tools/36.0.0/lib/apksigner.jar" signer/apksigner.jar
+          mkdir -p toolchain/platforms/android-36
+          cp -a "$ANDROID_HOME/build-tools/36.0.0" toolchain/build-tools-36.0.0
+          cp "$ANDROID_HOME/platforms/android-36/android.jar" toolchain/platforms/android-36/android.jar
+          tar -czf android36-toolchain-linux.tar.gz toolchain
       - uses: actions/upload-artifact@v4
         with:
-          name: android-apksigner-36
-          path: signer/apksigner.jar
+          name: android36-toolchain-linux
+          path: android36-toolchain-linux.tar.gz
           retention-days: 1
